@@ -26,13 +26,14 @@ class MigrationGenerator extends BaseMigrationCreator
         return new static(app('files'), __DIR__ . '/stubs');
     }
 
-    public function generate($table, $columns): string
+    public function generate($table, $columns,$model_name): string
     {
         $this->columns = $columns;
-
         $name = 'create_' . $table . '_table';
-
-        return $this->create($name, database_path('migrations'), $table, null);
+        $path = str_replace("src/Models",'database/migrations',BaseGenerator::guessClassFileName($model_name));
+        $tableName = ucfirst($table);
+        $path = str_replace("/{$tableName}.php",'',$path);
+        return $this->create($name, $path, $table, null);
     }
 
     protected function populateStub($stub, $table): array|string

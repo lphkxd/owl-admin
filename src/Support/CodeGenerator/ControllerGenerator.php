@@ -65,8 +65,8 @@ class ControllerGenerator extends BaseGenerator
         $name = str_replace('/', '\\', $name);
         $path = static::guessClassFileName($name);
         $dir  = dirname($path);
-
         $files = app('files');
+
 
         if (!is_dir($dir)) {
             $files->makeDirectory($dir, 0755, true);

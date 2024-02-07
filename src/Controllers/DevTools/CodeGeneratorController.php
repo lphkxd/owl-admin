@@ -5,6 +5,8 @@ namespace Slowlyo\OwlAdmin\Controllers\DevTools;
 use Slowlyo\OwlAdmin\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Slowlyo\OwlAdmin\Models\Extension;
+use Slowlyo\OwlAdmin\Renderers\Form;
 use Slowlyo\OwlAdmin\Services\AdminMenuService;
 use Slowlyo\OwlAdmin\Controllers\AdminController;
 use Slowlyo\OwlAdmin\Support\CodeGenerator\Generator;
@@ -86,9 +88,9 @@ class CodeGeneratorController extends AdminController
                                     ->description(__('admin.code_generators.import_record_desc'))
                                     ->placeholder(__('admin.code_generators.import_record_placeholder')),
                             ])->api([
-                                'url'    => '/dev_tools/code_generator',
+                                'url' => '/dev_tools/code_generator',
                                 'method' => 'post',
-                                'data'   => '${DECODEJSON(data)}',
+                                'data' => '${DECODEJSON(data)}',
                             ])
                         )
                     ),
@@ -353,7 +355,6 @@ class CodeGeneratorController extends AdminController
         try {
             // Route
             RouteGenerator::handle($record->menu_info);
-
             // Model
             if ($needs->contains('need_model')) {
                 $path = ModelGenerator::make()
@@ -377,7 +378,7 @@ class CodeGeneratorController extends AdminController
                     ->primary($record->primary_key)
                     ->timestamps($record->need_timestamps)
                     ->softDelete($record->soft_delete)
-                    ->generate($record->table_name, $columns);
+                    ->generate($record->table_name, $columns,$record->model_name);
 
                 $message .= $successMessage('Migration', $path);
                 $migratePath = str_replace(base_path(), '', $path);
