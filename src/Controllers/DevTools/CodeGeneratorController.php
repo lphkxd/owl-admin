@@ -116,11 +116,31 @@ class CodeGeneratorController extends AdminController
     public function form()
     {
         $databaseColumns = Generator::make()->getDatabaseColumns();
-
         // 下划线的表名处理成驼峰文件名
-        $nameHandler =
-            'JOIN(ARRAYMAP(SPLIT(IF(ENDSWITH(table_name, "s"), LEFT(table_name, LEN(table_name) - 1), table_name), "_"), item=>CAPITALIZE(item)))';
-
+        $nameHandler = 'JOIN(ARRAYMAP(SPLIT(IF(ENDSWITH(table_name, "s"), LEFT(table_name, LEN(table_name) - 1), table_name), "_"), item=>CAPITALIZE(item)))';
+        $defaultPath = [
+                'label' => "应用App目录",
+                'value' => [
+                    'controller_path' => $this->getNamespace('Controllers') ,
+                    'service_path' => $this->getNamespace('Services', 1),
+                    'model_path' => $this->getNamespace('Models', 1),
+                    'save_base_path' => "",
+                ]
+            ];
+        $paths = [$defaultPath];
+        foreach (Admin::extension()->all() as $extension) {
+            $property = $extension->composerProperty;
+            $namespace = str_replace('\\',"/",array_key_first($property->get('autoload.psr-4')));
+            $paths[] = [
+                'label' => "插件->" . $extension->getAlias(),
+                'value' => [
+                    'controller_path' => $namespace. 'Http/Controllers/',
+                    'service_path' => $namespace. 'Services/',
+                    'model_path' => $namespace . 'Models/',
+                    'save_base_path' => str_replace(base_path(), "", $extension->path()),
+                ]
+            ];
+        }
         return amis()->Form()
             ->id('code_generator_form')
             ->wrapWithPanel(false)
@@ -129,8 +149,11 @@ class CodeGeneratorController extends AdminController
             ->mode('horizontal')
             ->resetAfterSubmit()
             ->data([
-                'table_info'         => $databaseColumns,
+                'table_info' => $databaseColumns,
                 'table_primary_keys' => Generator::make()->getDatabasePrimaryKeys(),
+                'model_path' => $defaultPath['value']['model_path'],
+                'service_path' => $defaultPath['value']['service_path'],
+                'controller_path' => $defaultPath['value']['controller_path']
             ])
             ->tabs([
                 // 基本信息
@@ -145,9 +168,9 @@ class CodeGeneratorController extends AdminController
                                             'change' => [
                                                 'actions' => [
                                                     [
-                                                        'actionType'  => 'setValue',
+                                                        'actionType' => 'setValue',
                                                         'componentId' => 'gen_menu_title',
-                                                        'args'        => [
+                                                        'args' => [
                                                             'value' => '${value}',
                                                         ],
                                                     ],
@@ -163,9 +186,9 @@ class CodeGeneratorController extends AdminController
                                             'change' => [
                                                 'actions' => [
                                                     [
-                                                        'actionType'  => 'setValue',
+                                                        'actionType' => 'setValue',
                                                         'componentId' => 'gen_menu_route',
-                                                        'args'        => [
+                                                        'args' => [
                                                             'value' => '/${value}',
                                                         ],
                                                     ],
@@ -179,7 +202,7 @@ class CodeGeneratorController extends AdminController
                                         ->options(
                                             $databaseColumns->map(function ($item, $index) {
                                                 return [
-                                                    'label'    => $index,
+                                                    'label' => $index,
                                                     'children' => $item->keys()->map(function ($item) use ($index) {
                                                         return ['value' => $item . '-' . $index, 'label' => $item];
                                                     }),
@@ -191,20 +214,20 @@ class CodeGeneratorController extends AdminController
                                                 'actions' => [
                                                     // 更新 table_name 的值
                                                     [
-                                                        'actionType'  => 'setValue',
+                                                        'actionType' => 'setValue',
                                                         'componentId' => 'code_generator_form',
-                                                        'args'        => [
+                                                        'args' => [
                                                             'value' => [
-                                                                'table_name'  => '${SPLIT(event.data.value, "-")[0]}',
+                                                                'table_name' => '${SPLIT(event.data.value, "-")[0]}',
                                                                 'primary_key' => '${table_primary_keys[SPLIT(event.data.value, "-")[1]][SPLIT(event.data.value, "-")[0]]}',
-                                                                'columns'     => '${table_info[SPLIT(event.data.value, "-")[1]][SPLIT(event.data.value, "-")[0]]}',
+                                                                'columns' => '${table_info[SPLIT(event.data.value, "-")[1]][SPLIT(event.data.value, "-")[0]]}',
                                                             ],
                                                         ],
                                                     ],
                                                     [
-                                                        'actionType'  => 'setValue',
+                                                        'actionType' => 'setValue',
                                                         'componentId' => 'gen_menu_route',
-                                                        'args'        => [
+                                                        'args' => [
                                                             'value' => '/${SPLIT(event.data.value, "-")[0]}',
                                                         ],
                                                     ],
@@ -223,16 +246,41 @@ class CodeGeneratorController extends AdminController
                                     ->value('id')
                                     ->description(__('admin.code_generators.primary_key_description'))
                                     ->required(),
+                                amis()->SelectControl('save_path', "选择目录")
+                                    ->searchable()
+                                    ->description("可选择项目根目录或插件根目录")
+                                    ->clearable()
+                                    ->value($defaultPath)
+                                    ->selectMode('group')
+                                    ->options($paths)
+                                    ->onEvent([
+                                        'change' => [
+                                            'actions' => [
+                                                // 更新 table_name 的值
+                                                [
+                                                    'actionType' => 'setValue',
+                                                    'componentId' => 'code_generator_form',
+                                                    'args' => [
+                                                        'value' => [
+                                                            'controller_path' => '${event.data.value.controller_path}',
+                                                            'service_path' => '${event.data.value.service_path}',
+                                                            'model_path' => '${event.data.value.model_path}',
+                                                        ],
+                                                    ],
+                                                ],
+                                            ],
+                                        ],
+                                    ]),
                                 amis()
                                     ->TextControl('model_name', __('admin.code_generators.model_name'))
-                                    ->value($this->getNamespace('Models', 1) . '${' . $nameHandler . '}'),
+                                    ->value('${model_path}${' . $nameHandler . '}'),
                                 amis()
                                     ->TextControl('controller_name',
                                         __('admin.code_generators.controller_name'))
-                                    ->value($this->getNamespace('Controllers') . '${' . $nameHandler . '}Controller'),
+                                    ->value('${controller_path}${' . $nameHandler . '}Controller'),
                                 amis()
                                     ->TextControl('service_name', __('admin.code_generators.service_name'))
-                                    ->value($this->getNamespace('Services', 1) . '${' . $nameHandler . '}Service'),
+                                    ->value('${service_path}${' . $nameHandler . '}Service'),
                                 amis()
                                     ->SwitchControl('need_timestamps', 'CreatedAt & UpdatedAt')
                                     ->value(1),
@@ -275,8 +323,8 @@ class CodeGeneratorController extends AdminController
                             ->value('md')
                             ->visibleOn('${!!dialog_form}'),
                         amis()->CheckboxesControl('row_actions', __('admin.actions'))->options([
-                            'show'   => __('admin.show'),
-                            'edit'   => __('admin.edit'),
+                            'show' => __('admin.show'),
+                            'edit' => __('admin.edit'),
                             'delete' => __('admin.delete'),
                         ])->checkAll()->defaultCheckAll()->joinValues(false)->extractValue(),
                     ])
@@ -294,14 +342,13 @@ class CodeGeneratorController extends AdminController
     public function generate(Request $request)
     {
         $record = $this->service->getDetail($request->id);
-
-        $needs          = collect($record->needs);
-        $columns        = collect($record->columns);
+        $needs = collect($record->needs);
+        $columns = collect($record->columns);
         $successMessage = function ($type, $path) {
             return "<b class='text-success'>{$type} generated successfully!</b><br>{$path}<br><br>";
         };
 
-        $paths   = [];
+        $paths = [];
         $message = '';
         try {
             // Route
@@ -332,9 +379,9 @@ class CodeGeneratorController extends AdminController
                     ->softDelete($record->soft_delete)
                     ->generate($record->table_name, $columns);
 
-                $message     .= $successMessage('Migration', $path);
+                $message .= $successMessage('Migration', $path);
                 $migratePath = str_replace(base_path(), '', $path);
-                $paths[]     = $path;
+                $paths[] = $path;
             }
 
             // Controller
@@ -395,7 +442,7 @@ class CodeGeneratorController extends AdminController
      */
     public function preview(Request $request)
     {
-        $record  = $this->service->getDetail($request->id);
+        $record = $this->service->getDetail($request->id);
         $columns = collect($record->columns);
 
         try {
@@ -450,10 +497,10 @@ class CodeGeneratorController extends AdminController
             ->filter(fn($item) => $item != 'make')
             ->map(function ($item) {
                 $renderer = new \ReflectionClass('\\Slowlyo\\OwlAdmin\\Renderers\\' . $item);
-                $_doc     = $renderer->getDocComment();
-                $_doc     = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $_doc);
-                $_doc     = $_doc ? trim(str_replace('文档', '', $_doc)) : '';
-                $label    = $_doc ? $item . ' - ' . $_doc : $item;
+                $_doc = $renderer->getDocComment();
+                $_doc = preg_replace("/[^\x{4e00}-\x{9fa5}]/u", "", $_doc);
+                $_doc = $_doc ? trim(str_replace('文档', '', $_doc)) : '';
+                $label = $_doc ? $item . ' - ' . $_doc : $item;
 
                 return [
                     'label' => $label,
@@ -502,7 +549,7 @@ class CodeGeneratorController extends AdminController
         $type = $request->t;
 
         $comboName = $type . '_property';
-        $comboId   = $comboName . '_id';
+        $comboId = $comboName . '_id';
 
         $schema = amis()
             ->ComboControl($comboName, __('admin.code_generators.property'))
@@ -548,12 +595,12 @@ class CodeGeneratorController extends AdminController
                                                     'click' => [
                                                         'actions' => [
                                                             [
-                                                                'actionType'  => 'setValue',
+                                                                'actionType' => 'setValue',
                                                                 'componentId' => $comboId,
-                                                                'args'        => ['value' => '${value}',],
+                                                                'args' => ['value' => '${value}',],
                                                             ],
                                                             [
-                                                                'actionType'  => 'closeDialog',
+                                                                'actionType' => 'closeDialog',
                                                                 'componentId' => 'load_config_dialog',
                                                             ],
                                                         ],
