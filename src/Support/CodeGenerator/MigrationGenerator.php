@@ -32,11 +32,7 @@ class MigrationGenerator extends BaseMigrationCreator
         $this->columns = $columns;
         $name = 'create_' . $table . '_table';
         $path = str_replace("src/Models",'database/migrations',BaseGenerator::guessClassFileName($model_name));
-
-        $tableName = Str::camel($table); // 转换为小驼峰: exampleString
-        $tableName = ucfirst($tableName); // 转换为大驼峰: ExampleString
-
-        $path = str_replace("/{$tableName}.php",'',$path);
+        $path = dirname($path);
         return $this->create($name, $path, $table, null);
     }
 

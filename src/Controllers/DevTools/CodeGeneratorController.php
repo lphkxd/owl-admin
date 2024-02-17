@@ -381,7 +381,8 @@ class CodeGeneratorController extends AdminController
                     ->generate($record->table_name, $columns,$record->model_name);
 
                 $message .= $successMessage('Migration', $path);
-                $migratePath = str_replace(base_path(), '', $path);
+                $base_url= str_replace('\\','/',base_path());
+                $migratePath = str_replace($base_url, '', $path);
                 $paths[] = $path;
             }
 
