@@ -4,6 +4,7 @@ namespace Slowlyo\OwlAdmin\Support\CodeGenerator;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Illuminate\Database\Migrations\MigrationCreator as BaseMigrationCreator;
 
@@ -31,7 +32,10 @@ class MigrationGenerator extends BaseMigrationCreator
         $this->columns = $columns;
         $name = 'create_' . $table . '_table';
         $path = str_replace("src/Models",'database/migrations',BaseGenerator::guessClassFileName($model_name));
-        $tableName = ucfirst($table);
+
+        $tableName = Str::camel($table); // 转换为小驼峰: exampleString
+        $tableName = ucfirst($tableName); // 转换为大驼峰: ExampleString
+
         $path = str_replace("/{$tableName}.php",'',$path);
         return $this->create($name, $path, $table, null);
     }
