@@ -63,7 +63,6 @@ class BaseGenerator
         } catch (\Throwable $e) {
         }
         $class = trim($class, '\\');
-        $composer = self::fromJson(base_path('composer.json'));
         $autoloadFile = base_path('/vendor/autoload.php');
         $loader = require $autoloadFile;
         $map = collect($loader->getPrefixesPsr4())->mapWithKeys(function ($path, $namespace) {

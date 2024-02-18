@@ -15,49 +15,45 @@ class EditorController extends AdminController
         return $this->response()->success(compact('schema'));
     }
 
-    public function parse($json)
+    public function parse($json, $indentLevel = 0)
     {
-        $code    = '';
-        $map     = RendererMap::$map;
+        $indent = str_repeat("    ", $indentLevel); // 4个空格作为缩进单位
+        $code = '';
+        $map = RendererMap::$map;
         $mapKeys = array_keys($map);
 
         if ($json['type'] ?? null) {
             if (in_array($json['type'], $mapKeys)) {
                 $className = str_replace('Slowlyo\\OwlAdmin\\Renderers\\', '', $map[$json['type']]);
-                $code      .= sprintf('amis()->%s()', $className);
+                $code .= $indent . sprintf(PHP_EOL . $indent . 'amis()->%s()', $className);
             } else {
-                // 没找到对应的组件
-                $code .= sprintf('amis(\'%s\')', $json['type']);
+                $code .= $indent . sprintf(PHP_EOL . $indent . 'amis(\'%s\')', $json['type']);
             }
-
             foreach ($json as $key => $value) {
-                if ($key == 'type') {
+                if ($key == 'type' || $key == 'id') {
                     continue;
                 }
-                // 属性
                 if (is_array($value)) {
-                    $code .= sprintf('->%s(%s)', $key, $this->parse($value));
+                    $code .= sprintf("%s->%s(", $indent, $key) . $this->parse($value, $indentLevel + 1) . ')';
                 } else {
-                    $code .= sprintf('->%s(\'%s\')', $key, $this->escape($value));
+                    $code .= sprintf("%s->%s('%s')", "", $key, $this->escape($value));
                 }
             }
         } else {
-            // json 转 php 数组
-            $code = '[';
+            $code .= $indent . '[';
             foreach ($json as $key => $value) {
                 if (is_array($value)) {
                     if (Arr::isList($json)) {
-                        $code .= sprintf('%s,', $this->parse($value));
+                        $code .= sprintf("%s%s,", $indent . "    ", $this->parse($value, $indentLevel + 1));
                     } else {
-                        $code .= sprintf('\'%s\' => %s,', $key, $this->parse($value));
+                        $code .= sprintf("%s'%s' => %s,", $indent . "    ", $key, $this->parse($value, $indentLevel + 1));
                     }
                 } else {
-                    $code .= sprintf('\'%s\' => \'%s\',', $key, $this->escape($value));
+                    $code .= sprintf("%s'%s' => '%s',\n", $indent . "    ", $key, $this->escape($value));
                 }
             }
-            $code .= ']';
+            $code .= "\n" . $indent . ']';
         }
-
         return $code;
     }
 

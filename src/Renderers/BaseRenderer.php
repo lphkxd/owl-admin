@@ -30,8 +30,10 @@ class BaseRenderer implements \JsonSerializable
 
     public function set($name, $value)
     {
+        if ($name == 'map' && is_array($value) && array_keys($value) == array_keys(array_keys($value))) {
+            $value = (object)$value;
+        }
         $this->amisSchema[$name] = $value;
-
         return $this;
     }
 
@@ -51,14 +53,14 @@ class BaseRenderer implements \JsonSerializable
     }
 
     /**
-     * @param string $sign         权限标识
-     * @param mixed  $replaceValue 无权限时替换的值
+     * @param string $sign 权限标识
+     * @param mixed $replaceValue 无权限时替换的值
      *
      * @return $this
      */
     public function permission(string $sign, mixed $replaceValue = '')
     {
-        $this->amisSchema['owl_permission']               = $sign;
+        $this->amisSchema['owl_permission'] = $sign;
         $this->amisSchema['owl_permission_replace_value'] = $replaceValue;
 
         return $this;
